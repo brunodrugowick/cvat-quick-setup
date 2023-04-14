@@ -4,6 +4,6 @@ Just a helper. Might improve in the future. Might not.
 
 ## TODO
 
-- [] Better docker installation
-- [] Make it idempotent
+- [ ] Better docker installation
+- [ ] Make it idempotent
 
