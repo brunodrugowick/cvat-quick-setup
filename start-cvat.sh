@@ -16,6 +16,8 @@ CVAT_VERSION=develop
 SUBDOMAIN=my-cvat
 DOMAIN=serveo.net
 
+CVAT_HOME=$HOME/cvat
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     -v|--version)
@@ -40,39 +42,54 @@ done
 
 echo "CVAT_VERSION = ${CVAT_VERSION}"
 echo "SUBDOMAIN = ${SUBDOMAIN}"
-
 echo "DOMAIN = ${DOMAIN}"
 
-# The following comes from the official CVAT installation
-# https://opencv.github.io/cvat/docs/administration/basics/installation/
-sudo apt-get update
-sudo apt-get --no-install-recommends install -y \
-  apt-transport-https \
-  ca-certificates \
-  curl \
-  gnupg-agent \
-  software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository \
-  "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) \
-  stable"
-sudo apt-get update
-sudo apt-get --no-install-recommends install -y \
-  docker-ce docker-ce-cli containerd.io docker-compose-plugin
+install_deps() {
+    sudo apt update
+    sudo apt --no-install-recommends install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        gnupg-agent \
+        software-properties-common
+}
 
-sudo groupadd docker
-sudo usermod -aG docker $USER
+install_docker() {
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo add-apt-repository \
+        "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+        $(lsb_release -cs) \
+        stable"
 
-git clone https://github.com/opencv/cvat
-cd cvat
-git checkout $CVAT_VERSION
+    sudo apt update
+    sudo apt --no-install-recommends install -y \
+        docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+#    sudo groupadd docker
+#    sudo usermod -aG docker $USER
+}
+
+install_cvat() {
+    mkdir $CVAT_HOME
+    git clone https://github.com/opencv/cvat $HOME/cvat
+    cd $HOME/cvat
+    git checkout $CVAT_VERSION
+}
+
+run_cvat() {
+    cd $HOME/cvat
+    sudo docker compose up -d
+    sudo docker exec -it cvat_server bash -ic 'python3 ~/manage.py createsuperuser'
+}
+
+run_proxy() {
+    ssh -R $SUBDOMAIN:80:localhost:80 serveo.net
+}
 
 export CVAT_HOST=$REMOTE
+install_deps
+install_docker
+install_cvat
+run_cvat
+run_proxy
 
-docker compose up -d
-
-docker exec -it cvat_server bash -ic 'python3 ~/manage.py createsuperuser'
-
-ssh -R $SUBDOMAIN:80:localhost:80 serveo.net
- 
